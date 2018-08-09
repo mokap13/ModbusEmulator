@@ -10,15 +10,21 @@ namespace ModbusEmulator
     public class Emulator
     {
         private Random random;
+        private List<SerialPort> serialPorts;
         public Emulator()
         {
             random = new Random();
         }
         public void Start(string[] comPortNumbers)
         {
-            List<SerialPort> serialPorts = GetSerialPorts(comPortNumbers);
+            serialPorts = GetSerialPorts(comPortNumbers);
             serialPorts.ForEach(s => SerialPortHandler(s));
         }
+        public void Stop()
+        {
+            serialPorts.ForEach(s => s.Close());
+        }
+        
         public List<SerialPort> GetSerialPorts(string[] comPortNumbers)
         {
             return comPortNumbers
@@ -32,13 +38,13 @@ namespace ModbusEmulator
                 })
                 .ToList();
         }
-        async private void SerialPortHandler(SerialPort serialPort)
+        private void SerialPortHandler(SerialPort serialPort)
         {
             serialPort.Open();
             serialPort.DataReceived += SlavePort_DataReceived;
 
-            await new Task(() => { while (true) ; });
-            serialPort.Close();
+            //await new Task(() => { while (true) ; });
+            
         }
 
         private void SlavePort_DataReceived(object sender, SerialDataReceivedEventArgs e)

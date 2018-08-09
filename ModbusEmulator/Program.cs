@@ -17,12 +17,14 @@ namespace ModbusEmulator
             {
                 emulator.Start(args);
                 Console.WriteLine("Modbus эмулятор запущен...");
+                Console.ReadKey();
+                emulator.Stop();
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
+                Console.ReadKey();
             }
-            Console.ReadKey();
         }
     }
 }
