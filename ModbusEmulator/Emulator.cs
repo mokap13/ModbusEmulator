@@ -70,12 +70,12 @@ namespace ModbusEmulator
                     && (registerAddress == 0x20)
                     && (registerCount == 0x01))
                 {
-
+                    UInt16 randomValue = (UInt16)random.Next(0, 1000);
                     byte[] sendBytes = new byte[] {
                         slaveAddress,
                         function,
                         0x02,
-                        (byte)random.Next(0, 0xFF), (byte)random.Next(0, 0xFF),
+                        (byte)(randomValue>>8), (byte)randomValue, 
                         0x00, 0x00 };
                     UInt16 crc = ModbusCrc.CalculateCrc(sendBytes.Take(sendBytes.Length - 2).ToArray());
                     sendBytes[sendBytes.Length - 1] = (byte)(crc >> 8);

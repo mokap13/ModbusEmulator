@@ -9,7 +9,7 @@ namespace ModbusEmulator
 {
     class ModbusMaster
     {
-        ModbusSerialMaster modbusSerialMaster = ModbusSerialMaster.CreateRtu(;
+        //ModbusSerialMaster modbusSerialMaster = ModbusSerialMaster.CreateRtu(;
 
     }
 }
