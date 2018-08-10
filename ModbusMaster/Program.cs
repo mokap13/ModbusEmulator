@@ -23,30 +23,28 @@ namespace ModbusMaster
                 .Select(s => (IModbusSerialMaster)ModbusSerialMaster.CreateRtu(new SerialPortAdapter(s)))
                 .ToList();
 
+            masters.ForEach(m => ReadRegistersAsync(m));
 
-            ModbusRequestHandler(masters.First());
             Console.ReadKey();
             serialPorts.ForEach(s => s.Close());
         }
-        static void ModbusRequestHandler(IModbusSerialMaster master)
+        async static Task ReadRegistersAsync(IModbusSerialMaster master)
         {
-            List<byte> addresses = Enumerable.Range(1, 3)
-                .Select(i => (byte)i)
-                .ToList();
-
-            //await new Task(() =>
-            //{
+            await Task.Run(() =>
+            {
+                List<byte> addresses = Enumerable.Range(1, 247)
+                        .Select(i => (byte)i)
+                        .ToList();
                 while (true)
                 {
                     var values = addresses
-                    .Select(a => master.ReadInputRegisters(a, 0x20, 0x01).First())
-                    .ToArray();
+                        .Select(a => master.ReadInputRegisters(a, 0x20, 0x01).First())
+                        .ToArray();
                     values.ToList().ForEach(v => Console.Write($"{v.ToString()} "));
                     Console.WriteLine();
-                    Thread.Sleep(1000);
+                    Task.Delay(1000).Wait();
                 }
-            //});
-
+            }); ;
         }
     }
 }
