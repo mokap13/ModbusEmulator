@@ -50,6 +50,8 @@ namespace ModbusEmulator
         private void SlavePort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             SerialPort port = (sender as SerialPort);
+            if (port.BytesToRead == 0)
+                return;
             byte[] receivedBytes = new byte[port.BytesToRead];
             port.Read(receivedBytes, 0, port.BytesToRead);
 
