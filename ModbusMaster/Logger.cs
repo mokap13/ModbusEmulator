@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ModbusMaster
 {
     /// <summary>
-    /// Создает поток, который принимает
+    /// Создает поток, который потокобезопасно 
+    /// принимает сообщения и записвает их в один файл
     /// </summary>
     static class Logger
     {
@@ -22,7 +20,7 @@ namespace ModbusMaster
 
             Task.Factory.StartNew(() =>
             {
-                using (StreamWriter streamWriter = new StreamWriter(filename, true, Encoding.UTF8))
+                using (StreamWriter streamWriter = new StreamWriter(filename, false, Encoding.UTF8))
                 {
                     streamWriter.AutoFlush = true;
 

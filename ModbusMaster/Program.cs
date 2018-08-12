@@ -1,9 +1,9 @@
-﻿using System;
+﻿using ModbusEmulator;
+using System;
 using System.Collections.Generic;
 using System.IO.Ports;
 using System.Linq;
 using System.Threading.Tasks;
-using ModbusEmulator;
 
 namespace ModbusMaster
 {
@@ -11,16 +11,21 @@ namespace ModbusMaster
     {
         static void Main(string[] args)
         {
-            Emulator emulator = new Emulator();
-            List<SerialPort> serialPorts = emulator.GetSerialPorts(args);
+            /*Первый аргумент - количество опрашиваемых устройств на каждом порту*/
+            int deviceAddressCount = int.Parse(args[0]);
+            
+            List<SerialPort> serialPorts = Emulator.GetSerialPorts(args.Skip(1).ToArray());
             serialPorts.ForEach(s => s.Open());
             /*Генерирую диапазон опрашиваемых адресов устройств*/
-            List<byte> deviceAddressRange = Enumerable.Range(1, 5)
+            List<byte> deviceAddressRange = Enumerable.Range(1, deviceAddressCount)
                     .Select(i => (byte)i)
                     .ToList();
+
+            Console.WriteLine($"ModbusMaster запущен... Опрос портов: " +
+                $"{new string(serialPorts.SelectMany(s=> s.PortName + " ").ToArray())}");
             /*Ассинхронно запускаю опросы для каждого порта*/
             serialPorts.ForEach(port => StartModbusPollAsync(port, deviceAddressRange));
-
+            
             Console.ReadKey();
             serialPorts.ForEach(s => s.Close());
         }
@@ -31,12 +36,17 @@ namespace ModbusMaster
         /// <param name="deviceAddressRange">Адресы опрошиваемых устройст</param>
         private static async void StartModbusPollAsync(SerialPort serialPort, List<byte> deviceAddressRange)
         {
+            const byte function = 0x04;
+            const byte registerAddressHigh = 0x00;
+            const byte registerAddressLow = 0x20;
+            const byte registerCountHigh = 0x00;
+            const byte registerCountLow = 0x01;
             await Task.Factory.StartNew(() =>
             {
                 /*Основной цикл опроса одного порта*/
                 while (true)
                 {
-                    /*Ассинхронно запускаю алгоритм опроса, и сразуже начинаю отсчитыать период опроса*/
+                    /*Ассинхронно запускаю алгоритм опроса, и сразу же начинаю засекать период*/
                     Task.Factory.StartNew(async () =>
                     {
                         await Task.Factory.StartNew(() =>
@@ -44,32 +54,33 @@ namespace ModbusMaster
                             deviceAddressRange.ForEach(address =>
                             {
                                 #region Формирую и отправляю запрос
-                                byte[] sendingFrame = new byte[] { 0x00, 0x04, 0x00, 0x20, 0x00, 0x01 };
-                                sendingFrame[0] = address;
-                                sendingFrame = ModbusCrc.AddCrc(sendingFrame);
+                                byte[] buffer = new byte[256];
+                                buffer[0] = address;
+                                buffer[1] = function;
+                                buffer[2] = registerAddressHigh;
+                                buffer[3] = registerAddressLow;
+                                buffer[4] = registerCountHigh;
+                                buffer[5] = registerCountLow;
 
-                                serialPort.Write(sendingFrame, 0, sendingFrame.Length);
+                                buffer.AddModbusCrc(count:6);
 
-                                string message = $"{DateTime.Now.ToString("HH:mm:ss.fff")}:{serialPort.PortName}: TX: ";
-                                message += GetStringAsHexView(sendingFrame);
-                                Logger.Write(message);
-                                Console.WriteLine(message);
+                                string logMessage = $"{DateTime.Now.ToString("HH:mm:ss.fff")}:{serialPort.PortName}: TX: ";
+                                logMessage += buffer.ToStringHex(count: 8) + "\r\n";
+
+                                serialPort.BaseStream.Write(buffer, 0, count:8);
                                 #endregion
                                 #region Обрабатываю полученный ответ
-                                byte[] receivedBytes = new byte[256];
-                                Task<int> task = serialPort.BaseStream.ReadAsync(receivedBytes, 0, 256);
-                                if(task.Wait(100) == false)
-                                {
-                                    Logger.Write("timeout");
-                                    Console.WriteLine("timeout");
-                                }
-                                int frameLength = task.Result;
-                                receivedBytes = receivedBytes.Take(frameLength).ToArray();
+                                Task<int> taskReader = serialPort.BaseStream.ReadAsync(buffer, 0, 256);
+                                if (taskReader.Wait(250))
+                                    buffer = buffer.Take(count: taskReader.Result).ToArray();
+                                else
+                                    Logger.Write($"\t\t{serialPort.PortName}:RX: TIMEOUT");
 
-                                message = $"{DateTime.Now.ToString("HH:mm:ss.fff")}:{serialPort.PortName}: RX: ";
-                                message += GetStringAsHexView(receivedBytes);
-                                Logger.Write(message);
-                                Console.WriteLine(message);
+                                #endregion
+                                #region Записываю историю
+                                logMessage += $"{DateTime.Now.ToString("HH:mm:ss.fff")}:{serialPort.PortName}: RX: ";
+                                logMessage += buffer.ToStringHex(count: taskReader.Result);
+                                Logger.Write(logMessage);
                                 #endregion
                             });
                         });
@@ -78,15 +89,6 @@ namespace ModbusMaster
                     Task.Delay(1000).Wait();
                 }
             }, TaskCreationOptions.LongRunning);
-        }
-        /// <summary>
-        /// Возвращает строковое представление в формате Hex, bytes -> "0A BD 14 FF"
-        /// </summary>
-        /// <param name="sendingFrame">Исходный массив байт</param>
-        /// <returns></returns>
-        private static string GetStringAsHexView(byte[] sendingFrame)
-        {
-            return BitConverter.ToString(sendingFrame).Replace("-", " ");
         }
     }
 }

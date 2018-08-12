@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ModbusEmulator
 {
     /// <summary>
-    /// Расчитвает CRC
+    /// Методы расширения для массива байт
     /// </summary>
-    public class ModbusCrc
+    public static class ByteArrayExtension
     {
         private static UInt16[] CrcTable = {
         0X0000, 0XC0C1, 0XC181, 0X0140, 0XC301, 0X03C0, 0X0280, 0XC241,
@@ -46,33 +43,29 @@ namespace ModbusEmulator
         0X8201, 0X42C0, 0X4380, 0X8341, 0X4100, 0X81C1, 0X8081, 0X4040 };
 
         /// <summary>
-        /// Возвращает CRC для массива в соответствии с протоколом Mdbus
+        /// Возвращает CRC для массива в соответствии с протоколом Modbus
         /// </summary>
         /// <param name="data">Исходный массив данных</param>
         /// <returns>Modbus CRC</returns>
-        public static UInt16 CalculateCrc(byte[] data)
+        public static UInt16 GetModbusCrc(this byte[] data, int count)
         {
             UInt16 crc = 0xFFFF;
 
-            foreach (byte datum in data)
-            {
-                crc = (UInt16)((crc >> 8) ^ CrcTable[(crc ^ datum) & 0xFF]);
-            }
+            for (int i = 0; i < count; i++)
+                crc = (UInt16)((crc >> 8) ^ CrcTable[(crc ^ data[i]) & 0xFF]);
 
             return crc;
         }
         /// <summary>
         /// Сравнивает пришедшее CRC и расчетное на соответствие
         /// </summary>
-        /// <param name="receivedBytes">Исходный массив данных</param>
+        /// <param name="bytes">Исходный массив данных</param>
         /// <returns>true если CRC корректно, иначе false</returns>
-        public static bool IsCorrectCrc(byte[] receivedBytes)
+        public static bool IsCorrectCrc(this byte[] bytes, int count)
         {
-            UInt16 calculatedCrc = ModbusCrc
-                .CalculateCrc(receivedBytes.Take(receivedBytes.Length - 2)
-                .ToArray());
-            UInt16 receivedCrc = (UInt16)(receivedBytes.ElementAt(receivedBytes.Length - 1) << 8
-                | receivedBytes.ElementAt(receivedBytes.Length - 2));
+            UInt16 calculatedCrc = bytes.GetModbusCrc(count - 2);
+            UInt16 receivedCrc = (UInt16)(bytes[count - 1] << 8
+                | bytes[count - 2]);
             return calculatedCrc == receivedCrc;
         }
         /// <summary>
@@ -80,12 +73,20 @@ namespace ModbusEmulator
         /// </summary>
         /// <param name="bytes">Исходный массив данных</param>
         /// <returns>Массив с CRC</returns>
-        public static byte[] AddCrc(byte[] bytes)
+        public static void AddModbusCrc(this byte[] bytes, int count)
         {
-            UInt16 crc = CalculateCrc(bytes);
-            List<byte> bytesWithCrc = bytes.ToList();
-            bytesWithCrc.AddRange(new List<byte> { (byte)crc, (byte)(crc >> 8) });
-            return bytesWithCrc.ToArray();
+            UInt16 crc = bytes.GetModbusCrc(count);
+            bytes[count] = (byte)crc;
+            bytes[count + 1] = (byte)(crc >> 8);
+        }
+        /// <summary>
+        /// Возвращает строковое представление в формате Hex, bytes -> "0A BD 14 FF"
+        /// </summary>
+        /// <param name="bytes">Исходный массив байт</param>
+        /// <returns></returns>
+        public static string ToStringHex(this byte[] bytes, int count)
+        {
+            return BitConverter.ToString(bytes.Take(count).ToArray()).Replace("-", " ");
         }
     }
 }
