@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace ModbusEmulator
 {
+    /// <summary>
+    /// Расчитвает CRC
+    /// </summary>
     public class ModbusCrc
     {
         private static UInt16[] CrcTable = {
@@ -42,6 +45,11 @@ namespace ModbusEmulator
         0X4400, 0X84C1, 0X8581, 0X4540, 0X8701, 0X47C0, 0X4680, 0X8641,
         0X8201, 0X42C0, 0X4380, 0X8341, 0X4100, 0X81C1, 0X8081, 0X4040 };
 
+        /// <summary>
+        /// Возвращает CRC для массива в соответствии с протоколом Mdbus
+        /// </summary>
+        /// <param name="data">Исходный массив данных</param>
+        /// <returns>Modbus CRC</returns>
         public static UInt16 CalculateCrc(byte[] data)
         {
             UInt16 crc = 0xFFFF;
@@ -52,6 +60,32 @@ namespace ModbusEmulator
             }
 
             return crc;
+        }
+        /// <summary>
+        /// Сравнивает пришедшее CRC и расчетное на соответствие
+        /// </summary>
+        /// <param name="receivedBytes">Исходный массив данных</param>
+        /// <returns>true если CRC корректно, иначе false</returns>
+        public static bool IsCorrectCrc(byte[] receivedBytes)
+        {
+            UInt16 calculatedCrc = ModbusCrc
+                .CalculateCrc(receivedBytes.Take(receivedBytes.Length - 2)
+                .ToArray());
+            UInt16 receivedCrc = (UInt16)(receivedBytes.ElementAt(receivedBytes.Length - 1) << 8
+                | receivedBytes.ElementAt(receivedBytes.Length - 2));
+            return calculatedCrc == receivedCrc;
+        }
+        /// <summary>
+        /// Расчитвает и добавляет 2 байта CRC к массиву
+        /// </summary>
+        /// <param name="bytes">Исходный массив данных</param>
+        /// <returns>Массив с CRC</returns>
+        public static byte[] AddCrc(byte[] bytes)
+        {
+            UInt16 crc = CalculateCrc(bytes);
+            List<byte> bytesWithCrc = bytes.ToList();
+            bytesWithCrc.AddRange(new List<byte> { (byte)crc, (byte)(crc >> 8) });
+            return bytesWithCrc.ToArray();
         }
     }
 }

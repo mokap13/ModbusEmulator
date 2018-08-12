@@ -9,6 +9,9 @@ namespace ModbusEmulator
 {
     public class Emulator
     {
+        /// <summary>
+        /// Генератор случайных чисел для эмуляции тока
+        /// </summary>
         private Random random;
         private List<SerialPort> serialPorts;
         public Emulator()
@@ -18,13 +21,19 @@ namespace ModbusEmulator
         public void Start(string[] comPortNumbers)
         {
             serialPorts = GetSerialPorts(comPortNumbers);
-            serialPorts.ForEach(s => SerialPortHandler(s));
+            serialPorts.ForEach(s => s.DataReceived += SlavePort_DataReceived);
+            serialPorts.ForEach(s => s.Open());
         }
         public void Stop()
         {
+            serialPorts.ForEach(s => s.DataReceived -= SlavePort_DataReceived);
             serialPorts.ForEach(s => s.Close());
         }
-        
+        /// <summary>
+        /// Возвращает на основе числовых аргументов командной строки COM порты
+        /// </summary>
+        /// <param name="comPortNumbers">Номера COM портов</param>
+        /// <returns>COM порты с настройками 9600,8,N,1</returns>
         public List<SerialPort> GetSerialPorts(string[] comPortNumbers)
         {
             return comPortNumbers
@@ -38,15 +47,11 @@ namespace ModbusEmulator
                 })
                 .ToList();
         }
-        private void SerialPortHandler(SerialPort serialPort)
-        {
-            serialPort.Open();
-            serialPort.DataReceived += SlavePort_DataReceived;
-
-            //await new Task(() => { while (true) ; });
-            
-        }
-
+        /// <summary>
+        /// Обработчик принятых данных, после анализа посылка в случае корректности запроса отвечает
+        /// </summary>
+        /// <param name="sender">SerialPort</param>
+        /// <param name="e"></param>
         private void SlavePort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             SerialPort port = (sender as SerialPort);
@@ -54,13 +59,8 @@ namespace ModbusEmulator
                 return;
             byte[] receivedBytes = new byte[port.BytesToRead];
             port.Read(receivedBytes, 0, port.BytesToRead);
-
-            UInt16 calculatedCrc = ModbusCrc
-                .CalculateCrc(receivedBytes.Take(receivedBytes.Length - 2)
-                .ToArray());
-            UInt16 receivedCrc = (UInt16)(receivedBytes.ElementAt(receivedBytes.Length - 1) << 8
-                | receivedBytes.ElementAt(receivedBytes.Length - 2));
-            if (calculatedCrc == receivedCrc)
+            
+            if (ModbusCrc.IsCorrectCrc(receivedBytes))
             {
                 byte slaveAddress = receivedBytes[0];
                 byte function = receivedBytes[1];
@@ -72,20 +72,16 @@ namespace ModbusEmulator
                     && (registerAddress == 0x20)
                     && (registerCount == 0x01))
                 {
-                    UInt16 randomValue = (UInt16)random.Next(0, 1000);
-                    byte[] sendBytes = new byte[] {
+                    UInt16 randomData = (UInt16)random.Next(0, 1000);
+                    byte[] responseBytes = new byte[] {
                         slaveAddress,
                         function,
                         0x02,
-                        (byte)(randomValue>>8), (byte)randomValue, 
-                        0x00, 0x00 };
-                    UInt16 crc = ModbusCrc.CalculateCrc(sendBytes.Take(sendBytes.Length - 2).ToArray());
-                    sendBytes[sendBytes.Length - 1] = (byte)(crc >> 8);
-                    sendBytes[sendBytes.Length - 2] = (byte)crc;
-                    port.BaseStream.Write(sendBytes, 0, sendBytes.Length);
+                        (byte)(randomData>>8), (byte)randomData};
+                    responseBytes = ModbusCrc.AddCrc(responseBytes);
+                    port.BaseStream.Write(responseBytes, 0, responseBytes.Length);
                 }
             }
         }
-
     }
 }

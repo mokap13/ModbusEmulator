@@ -32,14 +32,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Modbus.Core, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Modbus.1.0.0\lib\net45\Modbus.Core.dll</HintPath>
-    </Reference>
     <Reference Include="NModbus4, Version=3.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\NModbus4.3.0.0-alpha2\lib\net45\NModbus4.dll</HintPath>
-    </Reference>
-    <Reference Include="NModbus4.Serial, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NModbus4.Serial.1.0.0-alpha1\lib\net45\NModbus4.Serial.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -51,7 +45,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ModbusMaster.cs" />
+    <Compile Include="Logger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
