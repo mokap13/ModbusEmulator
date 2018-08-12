@@ -45,7 +45,8 @@ namespace ModbusEmulator
         /// <summary>
         /// Возвращает CRC для массива в соответствии с протоколом Modbus
         /// </summary>
-        /// <param name="data">Исходный массив данных</param>
+        /// <param name="bytes">Буфер с данными</param>
+        /// <param name="count">Длина данных для которого расчитывает crc</param>
         /// <returns>Modbus CRC</returns>
         public static UInt16 GetModbusCrc(this byte[] data, int count)
         {
@@ -59,7 +60,8 @@ namespace ModbusEmulator
         /// <summary>
         /// Сравнивает пришедшее CRC и расчетное на соответствие
         /// </summary>
-        /// <param name="bytes">Исходный массив данных</param>
+        /// <param name="bytes">Буфер с данными</param>
+        /// <param name="count">Длина данных вместе с CRC</param>
         /// <returns>true если CRC корректно, иначе false</returns>
         public static bool IsCorrectCrc(this byte[] bytes, int count)
         {
@@ -71,7 +73,8 @@ namespace ModbusEmulator
         /// <summary>
         /// Расчитвает и добавляет 2 байта CRC к массиву
         /// </summary>
-        /// <param name="bytes">Исходный массив данных</param>
+        /// <param name="bytes">Буфер с данными</param>
+        /// <param name="count">Длина данных</param>
         /// <returns>Массив с CRC</returns>
         public static void AddModbusCrc(this byte[] bytes, int count)
         {
@@ -82,8 +85,9 @@ namespace ModbusEmulator
         /// <summary>
         /// Возвращает строковое представление в формате Hex, bytes -> "0A BD 14 FF"
         /// </summary>
-        /// <param name="bytes">Исходный массив байт</param>
-        /// <returns></returns>
+        /// <param name="bytes">Буфер с данными</param>
+        /// <param name="count">Длина данных</param>
+        /// <returns>Строковое представление в виде Hex последовательности</returns>
         public static string ToStringHex(this byte[] bytes, int count)
         {
             return BitConverter.ToString(bytes.Take(count).ToArray()).Replace("-", " ");
